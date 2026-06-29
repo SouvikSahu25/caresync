@@ -1,0 +1,223 @@
+{% extends 'base.html' %}
+
+{% block title %}Doctor Dashboard - CareSync{% endblock %}
+
+{% block content %}
+<div class="dashboard-container">
+    <!-- Welcome Header -->
+    <header class="dashboard-header flex-header">
+        <div class="header-info">
+            <h1 class="header-title">Welcome, Dr. {{ user.first_name|default:user.username }}!</h1>
+            <p class="header-subtitle">
+                <i class="fa-solid fa-stethoscope"></i> {{ doctor.get_specialization_display }} &bull; 
+                <i class="fa-solid fa-indian-rupee-sign"></i> Consultation Fee: ₹{{ doctor.fee }}
+            </p>
+        </div>
+        <div class="header-stats doctor-stats">
+            <div class="stat-card">
+                <i class="fa-solid fa-users stat-icon text-primary"></i>
+                <div class="stat-detail">
+                    <h3>Total Patients</h3>
+                    <p>{{ total }} Booked</p>
+                </div>
+            </div>
+            <div class="stat-card">
+                <i class="fa-solid fa-hourglass-half stat-icon text-warning"></i>
+                <div class="stat-detail">
+                    <h3>Pending</h3>
+                    <p>{{ pending }} Waiting</p>
+                </div>
+            </div>
+            <div class="stat-card">
+                <i class="fa-solid fa-square-check stat-icon text-success"></i>
+                <div class="stat-detail">
+                    <h3>Completed</h3>
+                    <p>{{ completed }} Treated</p>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Queue Area -->
+    <section class="dashboard-section card-glass full-width-section">
+        <div class="card-header flex-header-row">
+            <h2><i class="fa-solid fa-clipboard-list text-primary"></i> Patient Appointments Queue</h2>
+            <div class="availability-badge">
+                <i class="fa-solid fa-calendar-days"></i> Hours: {{ doctor.availability }}
+            </div>
+        </div>
+        <div class="card-body">
+            {% if not appointments %}
+                <div class="empty-state">
+                    <i class="fa-solid fa-calendar-times"></i>
+                    <p>No appointments scheduled for you yet.</p>
+                </div>
+            {% else %}
+                <div class="appointment-table-wrapper">
+                    <table class="appointment-table">
+                        <thead>
+                            <tr>
+                                <th>Patient Name</th>
+                                <th>Schedule Date</th>
+                                <th>Time Slot</th>
+                                <th>Symptoms / Notes</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for appt in appointments %}
+                                <tr>
+                                    <td>
+                                        <div class="patient-profile-info">
+                                            <strong>{{ appt.patient.user.get_full_name|default:appt.patient.user.username }}</strong>
+                                            <span class="patient-phone">{{ appt.patient.phone|default:"No phone" }}</span>
+                                        </div>
+                                    </td>
+                                    <td>{{ appt.date|date:"M d, Y" }}</td>
+                                    <td>{{ appt.get_time_slot_display }}</td>
+                                    <td class="table-symptoms">{{ appt.symptoms }}</td>
+                                    <td>
+                                        <span class="badge badge-{{ appt.status|lower }}">
+                                            {{ appt.get_status_display }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <div class="action-btn-group">
+                                            {% if appt.status == 'PENDING' %}
+                                                <!-- Form for Approve -->
+                                                <form action="{% url 'update_appointment' appt.id %}" method="POST" class="inline-form">
+                                                    {% csrf_token %}
+                                                    <input type="hidden" name="action" value="APPROVE">
+                                                    <button type="submit" class="btn btn-sm btn-success">
+                                                        <i class="fa-solid fa-check"></i> Approve
+                                                    </button>
+                                                </form>
+                                                
+                                                <!-- Form for Cancel -->
+                                                <form action="{% url 'update_appointment' appt.id %}" method="POST" class="inline-form">
+                                                    {% csrf_token %}
+                                                    <input type="hidden" name="action" value="CANCEL">
+                                                    <button type="submit" class="btn btn-sm btn-danger">
+                                                        <i class="fa-solid fa-xmark"></i> Reject
+                                                    </button>
+                                                </form>
+                                            {% elif appt.status == 'APPROVED' %}
+                                                <!-- Trigger prescription modal -->
+                                                <button class="btn btn-sm btn-primary" onclick="openPrescribeModal('{{ appt.id }}', '{{ appt.patient.user.get_full_name|default:appt.patient.user.username|escapejs }}')">
+                                                    <i class="fa-solid fa-file-prescription"></i> Diagnose / Prescribe
+                                                </button>
+                                                
+                                                <form action="{% url 'update_appointment' appt.id %}" method="POST" class="inline-form">
+                                                    {% csrf_token %}
+                                                    <input type="hidden" name="action" value="CANCEL">
+                                                    <button type="submit" class="btn btn-sm btn-outline-danger">
+                                                        <i class="fa-solid fa-xmark"></i> Cancel
+                                                    </button>
+                                                </form>
+                                            {% elif appt.status == 'COMPLETED' %}
+                                                <button class="btn btn-sm btn-outline-info" onclick="viewPrescriptionOnly('{{ appt.patient.user.get_full_name|default:appt.patient.user.username|escapejs }}', '{{ appt.prescription|escapejs }}')">
+                                                    <i class="fa-solid fa-eye"></i> View Rx
+                                                </button>
+                                            {% else %}
+                                                <span class="text-muted">No actions</span>
+                                            {% endif %}
+                                        </div>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% endif %}
+        </div>
+    </section>
+</div>
+
+<!-- Prescription Form Modal -->
+<div id="prescribe-modal" class="modal" style="display: none;">
+    <div class="modal-content">
+        <form id="prescribe-form" method="POST" action="">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="COMPLETE">
+            
+            <div class="modal-header">
+                <h3><i class="fa-solid fa-file-prescription text-primary"></i> Diagnostic & Prescription Form</h3>
+                <button type="button" class="modal-close" onclick="closePrescribeModal()">&times;</button>
+            </div>
+            
+            <div class="modal-body">
+                <p><strong>Patient Name:</strong> <span id="modal-patient-name">Patient Name</span></p>
+                <div class="form-group">
+                    <label for="prescription-text"><i class="fa-solid fa-prescription"></i> Rx Medication / Instructions</label>
+                    <textarea id="prescription-text" name="prescription" required rows="6" placeholder="Enter list of medicines, dosage, and diagnostic notes..." class="form-control"></textarea>
+                </div>
+            </div>
+            
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closePrescribeModal()">Cancel</button>
+                <button type="submit" class="btn btn-primary">Save & Complete Visit</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Simple Rx Viewer Modal -->
+<div id="rx-view-modal" class="modal" style="display: none;">
+    <div class="modal-content">
+        <div class="modal-header text-info">
+            <h3><i class="fa-solid fa-receipt"></i> Completed Treatment Details</h3>
+            <button type="button" class="modal-close" onclick="closeRxViewModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <p><strong>Patient Name:</strong> <span id="rx-patient-name">Patient Name</span></p>
+            <hr>
+            <div class="prescription-box">
+                <h4><i class="fa-solid fa-prescription"></i> Issued Prescription Notes</h4>
+                <p id="rx-notes-text" class="notes-text">Notes...</p>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" onclick="closeRxViewModal()">Close</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Doctor Modal functions
+    function openPrescribeModal(appointmentId, patientName) {
+        const form = document.getElementById('prescribe-form');
+        form.action = `/update-appointment/${appointmentId}/`;
+        document.getElementById('modal-patient-name').innerText = patientName;
+        document.getElementById('prescribe-modal').style.display = 'flex';
+    }
+
+    function closePrescribeModal() {
+        document.getElementById('prescribe-modal').style.display = 'none';
+        document.getElementById('prescription-text').value = '';
+    }
+
+    function viewPrescriptionOnly(patientName, prescriptionText) {
+        document.getElementById('rx-patient-name').innerText = patientName;
+        document.getElementById('rx-notes-text').innerText = prescriptionText;
+        document.getElementById('rx-view-modal').style.display = 'flex';
+    }
+
+    function closeRxViewModal() {
+        document.getElementById('rx-view-modal').style.display = 'none';
+    }
+
+    // Close modals when clicking outside
+    window.onclick = function(event) {
+        const prescribeModal = document.getElementById('prescribe-modal');
+        const rxModal = document.getElementById('rx-view-modal');
+        if (event.target === prescribeModal) {
+            closePrescribeModal();
+        } else if (event.target === rxModal) {
+            closeRxViewModal();
+        }
+    }
+</script>
+{% endblock %}

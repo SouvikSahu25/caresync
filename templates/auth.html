@@ -1,0 +1,163 @@
+{% extends 'base.html' %}
+
+{% block title %}CareSync - Sign In / Register{% endblock %}
+
+{% block content %}
+<div class="auth-wrapper">
+    <div class="auth-card">
+        <!-- Auth Header tabs -->
+        <div class="auth-tabs">
+            <button class="tab-btn {% if tab == 'login' %}active{% endif %}" id="login-tab-btn" onclick="switchAuthTab('login')">
+                <i class="fa-solid fa-right-to-bracket"></i> Sign In
+            </button>
+            <button class="tab-btn {% if tab == 'register' %}active{% endif %}" id="register-tab-btn" onclick="switchAuthTab('register')">
+                <i class="fa-solid fa-user-plus"></i> Create Account
+            </button>
+        </div>
+
+        <div class="auth-body">
+            <!-- Login Form -->
+            <form action="{% url 'login' %}" method="POST" class="auth-form {% if tab == 'login' %}active{% endif %}" id="login-form">
+                {% csrf_token %}
+                <h2 class="auth-title">Welcome Back</h2>
+                <p class="auth-subtitle">Log in to sync with your doctor and schedule appointments.</p>
+                
+                <div class="form-group">
+                    <label for="login-username"><i class="fa-solid fa-user"></i> Username</label>
+                    <input type="text" id="login-username" name="username" required placeholder="Enter username" class="form-control">
+                </div>
+                
+                <div class="form-group">
+                    <label for="login-password"><i class="fa-solid fa-lock"></i> Password</label>
+                    <input type="password" id="login-password" name="password" required placeholder="Enter password" class="form-control">
+                </div>
+                
+                <button type="submit" class="btn btn-primary btn-block">Sign In</button>
+            </form>
+
+            <!-- Register Form -->
+            <form action="{% url 'register' %}" method="POST" class="auth-form {% if tab == 'register' %}active{% endif %}" id="register-form">
+                {% csrf_token %}
+                <h2 class="auth-title">Get Started</h2>
+                <p class="auth-subtitle">Join CareSync today and manage your medical ecosystem.</p>
+                
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="reg-username"><i class="fa-solid fa-user"></i> Username *</label>
+                        <input type="text" id="reg-username" name="username" required placeholder="Pick a username" class="form-control">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="reg-email"><i class="fa-solid fa-envelope"></i> Email Address *</label>
+                        <input type="email" id="reg-email" name="email" required placeholder="name@example.com" class="form-control">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="reg-firstname"><i class="fa-solid fa-id-card"></i> First Name *</label>
+                        <input type="text" id="reg-firstname" name="first_name" required placeholder="First Name" class="form-control">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="reg-lastname"><i class="fa-solid fa-id-card"></i> Last Name *</label>
+                        <input type="text" id="reg-lastname" name="last_name" required placeholder="Last Name" class="form-control">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="reg-password"><i class="fa-solid fa-lock"></i> Password *</label>
+                        <input type="password" id="reg-password" name="password" required placeholder="••••••••" class="form-control">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="reg-phone"><i class="fa-solid fa-phone"></i> Phone Number</label>
+                        <input type="text" id="reg-phone" name="phone" placeholder="Phone number" class="form-control">
+                    </div>
+
+                    <div class="form-group full-width">
+                        <label for="reg-address"><i class="fa-solid fa-map-location-dot"></i> Home Address</label>
+                        <input type="text" id="reg-address" name="address" placeholder="123 Care Lane, Health City" class="form-control">
+                    </div>
+                    
+                    <div class="form-group full-width">
+                        <label for="reg-role"><i class="fa-solid fa-users-gear"></i> I want to register as a:</label>
+                        <select id="reg-role" name="role" class="form-control" onchange="toggleDoctorFields()">
+                            <option value="PATIENT">Patient (Book Appointments & View History)</option>
+                            <option value="DOCTOR">Doctor (Manage Calendar & Issue Prescriptions)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Doctor specific fields (Hidden by default unless Doctor selected) -->
+                <div class="doctor-fields-wrapper" id="doctor-fields" style="display: none;">
+                    <h3 class="fields-divider-title"><i class="fa-solid fa-user-doctor"></i> Doctor Professional Information</h3>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="doc-specialization"><i class="fa-solid fa-stethoscope"></i> Specialization</label>
+                            <select id="doc-specialization" name="specialization" class="form-control">
+                                {% for code, label in specializations %}
+                                    <option value="{{ code }}">{{ label }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="doc-fee"><i class="fa-solid fa-indian-rupee-sign"></i> Consultation Fee (INR)</label>
+                            <input type="number" id="doc-fee" name="fee" value="500.00" min="0" step="50" class="form-control">
+                        </div>
+
+                        <div class="form-group full-width">
+                            <label for="doc-availability"><i class="fa-solid fa-calendar-days"></i> Availability Schedule</label>
+                            <input type="text" id="doc-availability" name="availability" value="Mon-Fri, 9:00 AM - 5:00 PM" class="form-control">
+                        </div>
+
+                        <div class="form-group full-width">
+                            <label for="doc-bio"><i class="fa-solid fa-user-pen"></i> Doctor Biography / Qualifications</label>
+                            <textarea id="doc-bio" name="bio" rows="3" placeholder="Tell patients about your medical background..." class="form-control"></textarea>
+                        </div>
+                    </div>
+                </div>
+                
+                <button type="submit" class="btn btn-secondary btn-block">Create Account</button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function toggleDoctorFields() {
+        const roleSelect = document.getElementById('reg-role');
+        const doctorFields = document.getElementById('doctor-fields');
+        if (roleSelect.value === 'DOCTOR') {
+            doctorFields.style.display = 'block';
+            // Trigger animation or custom transitions if any
+        } else {
+            doctorFields.style.display = 'none';
+        }
+    }
+
+    function switchAuthTab(tab) {
+        const loginTabBtn = document.getElementById('login-tab-btn');
+        const registerTabBtn = document.getElementById('register-tab-btn');
+        const loginForm = document.getElementById('login-form');
+        const registerForm = document.getElementById('register-form');
+
+        if (tab === 'login') {
+            loginTabBtn.classList.add('active');
+            registerTabBtn.classList.remove('active');
+            loginForm.classList.add('active');
+            registerForm.classList.remove('active');
+        } else {
+            registerTabBtn.classList.add('active');
+            loginTabBtn.classList.remove('active');
+            registerForm.classList.add('active');
+            loginForm.classList.remove('active');
+        }
+    }
+    
+    // Run on load to set correct state
+    document.addEventListener('DOMContentLoaded', function() {
+        toggleDoctorFields();
+    });
+</script>
+{% endblock %}

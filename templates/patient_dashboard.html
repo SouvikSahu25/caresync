@@ -1,0 +1,215 @@
+{% extends 'base.html' %}
+
+{% block title %}Patient Dashboard - CareSync{% endblock %}
+
+{% block content %}
+<div class="dashboard-container">
+    <!-- Welcome Header -->
+    <header class="dashboard-header">
+        <div class="header-info">
+            <h1 class="header-title">Hello, {{ user.first_name|default:user.username }}!</h1>
+            <p class="header-subtitle">Manage your health profile, schedule appointments, and view prescriptions.</p>
+        </div>
+        <div class="header-stats">
+            <div class="stat-card">
+                <i class="fa-solid fa-calendar-check stat-icon text-primary"></i>
+                <div class="stat-detail">
+                    <h3>Appointments</h3>
+                    <p>{{ appointments.count }} Total</p>
+                </div>
+            </div>
+            <div class="stat-card">
+                <i class="fa-solid fa-file-medical stat-icon text-success"></i>
+                <div class="stat-detail">
+                    <h3>Prescriptions</h3>
+                    <p>
+                        {{ appointments.count }} Logs
+                    </p>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div class="dashboard-grid">
+        <!-- Left: Booking Form -->
+        <section class="dashboard-section card-glass">
+            <div class="card-header">
+                <h2><i class="fa-solid fa-calendar-plus text-primary"></i> Schedule an Appointment</h2>
+            </div>
+            <div class="card-body">
+                {% if not doctors %}
+                    <div class="empty-state">
+                        <i class="fa-solid fa-user-slash"></i>
+                        <p>No doctors are currently registered on CareSync.</p>
+                    </div>
+                {% else %}
+                    <form action="{% url 'book_appointment' %}" method="POST" class="booking-form">
+                        {% csrf_token %}
+                        <div class="form-group">
+                            <label for="book-doctor"><i class="fa-solid fa-user-doctor"></i> Select a Specialist</label>
+                            <select id="book-doctor" name="doctor_id" required class="form-control" onchange="updateDoctorFee()">
+                                <option value="" disabled selected>Choose Doctor...</option>
+                                {% for doc in doctors %}
+                                    <option value="{{ doc.id }}" data-fee="{{ doc.fee }}" data-availability="{{ doc.availability }}">
+                                        Dr. {{ doc.profile.user.get_full_name|default:doc.profile.user.username }} ({{ doc.get_specialization_display }})
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <!-- Mini Doctor Card Info inside booking form (updates dynamically with JS) -->
+                        <div id="selected-doctor-info" class="selected-doctor-card" style="display: none;">
+                            <p><i class="fa-solid fa-indian-rupee-sign"></i> <strong>Consultation Fee:</strong> <span id="info-fee">₹0</span></p>
+                            <p><i class="fa-solid fa-clock"></i> <strong>Schedule:</strong> <span id="info-availability">N/A</span></p>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="book-date"><i class="fa-solid fa-calendar-day"></i> Select Date</label>
+                            <input type="date" id="book-date" name="date" required class="form-control" min="{{ today }}">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="book-slot"><i class="fa-solid fa-clock"></i> Preferred Time Slot</label>
+                            <select id="book-slot" name="time_slot" required class="form-control">
+                                <option value="" disabled selected>Choose Time Slot...</option>
+                                {% for code, label in slots %}
+                                    <option value="{{ code }}">{{ label }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="book-symptoms"><i class="fa-solid fa-notes-medical"></i> Describe your Symptoms</label>
+                            <textarea id="book-symptoms" name="symptoms" required rows="4" placeholder="Briefly describe what symptoms you are experiencing..." class="form-control"></textarea>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary btn-block">Confirm Appointment Request</button>
+                    </form>
+                {% endif %}
+            </div>
+        </section>
+
+        <!-- Right: Appointment Queue / History -->
+        <section class="dashboard-section card-glass">
+            <div class="card-header">
+                <h2><i class="fa-solid fa-clock-rotate-left text-success"></i> Your Appointment History</h2>
+            </div>
+            <div class="card-body">
+                {% if not appointments %}
+                    <div class="empty-state">
+                        <i class="fa-solid fa-hospital-user"></i>
+                        <p>You haven't scheduled any appointments yet.</p>
+                    </div>
+                {% else %}
+                    <div class="appointment-list">
+                        {% for appt in appointments %}
+                            <div class="appointment-item">
+                                <div class="appt-main">
+                                    <div class="appt-header">
+                                        <div class="appt-doctor">
+                                            <strong>Dr. {{ appt.doctor.profile.user.get_full_name|default:appt.doctor.profile.user.username }}</strong>
+                                            <span class="appt-specialty">{{ appt.doctor.get_specialization_display }}</span>
+                                        </div>
+                                        <span class="badge badge-{{ appt.status|lower }}">
+                                            {{ appt.get_status_display }}
+                                        </span>
+                                    </div>
+                                    <div class="appt-details">
+                                        <span><i class="fa-solid fa-calendar-day"></i> {{ appt.date|date:"M d, Y" }}</span>
+                                        <span><i class="fa-solid fa-clock"></i> {{ appt.get_time_slot_display }}</span>
+                                    </div>
+                                    <div class="appt-symptoms">
+                                        <strong>Symptoms:</strong> {{ appt.symptoms }}
+                                    </div>
+                                    
+                                    {% if appt.status == 'COMPLETED' and appt.prescription %}
+                                        <div class="appt-action-box">
+                                            <button class="btn btn-sm btn-outline-success" onclick="openPrescriptionModal('{{ appt.doctor.profile.user.get_full_name|default:appt.doctor.profile.user.username|escapejs }}', '{{ appt.date|date:'M d, Y'|escapejs }}', '{{ appt.prescription|escapejs }}')">
+                                                <i class="fa-solid fa-file-prescription"></i> View Prescription
+                                            </button>
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            </div>
+        </section>
+    </div>
+</div>
+
+<!-- Prescription Modal -->
+<div id="prescription-modal" class="modal" style="display: none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3><i class="fa-solid fa-file-prescription text-success"></i> CareSync Digital Prescription</h3>
+            <button class="modal-close" onclick="closePrescriptionModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="prescription-meta">
+                <p><strong>Doctor:</strong> <span id="presc-doctor">N/A</span></p>
+                <p><strong>Date:</strong> <span id="presc-date">N/A</span></p>
+            </div>
+            <hr>
+            <div class="prescription-box">
+                <h4><i class="fa-solid fa-prescription"></i> Rx Notes / Medication</h4>
+                <p id="presc-notes">No details available.</p>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closePrescriptionModal()">Close</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Prevent selecting past dates in calendar
+    const dateInput = document.getElementById('book-date');
+    if (dateInput) {
+        const today = new Date().toISOString().split('T')[0];
+        dateInput.min = today;
+    }
+
+    function updateDoctorFee() {
+        const select = document.getElementById('book-doctor');
+        const infoDiv = document.getElementById('selected-doctor-info');
+        const feeSpan = document.getElementById('info-fee');
+        const schedSpan = document.getElementById('info-availability');
+        
+        if (select.selectedIndex > 0) {
+            const option = select.options[select.selectedIndex];
+            const fee = option.getAttribute('data-fee');
+            const sched = option.getAttribute('data-availability');
+            
+            feeSpan.innerText = '₹' + parseFloat(fee).toFixed(2);
+            schedSpan.innerText = sched;
+            infoDiv.style.display = 'block';
+        } else {
+            infoDiv.style.display = 'none';
+        }
+    }
+
+    // Modal Control Functions
+    function openPrescriptionModal(doctorName, date, prescriptionText) {
+        document.getElementById('presc-doctor').innerText = 'Dr. ' + doctorName;
+        document.getElementById('presc-date').innerText = date;
+        document.getElementById('presc-notes').innerText = prescriptionText;
+        document.getElementById('prescription-modal').style.display = 'flex';
+    }
+
+    function closePrescriptionModal() {
+        document.getElementById('prescription-modal').style.display = 'none';
+    }
+
+    // Close modal when clicking outside content
+    window.onclick = function(event) {
+        const modal = document.getElementById('prescription-modal');
+        if (event.target === modal) {
+            closePrescriptionModal();
+        }
+    }
+</script>
+{% endblock %}

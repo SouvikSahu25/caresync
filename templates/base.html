@@ -1,0 +1,91 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}CareSync - Unified Healthcare Portal{% endblock %}</title>
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- FontAwesome for Premium Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Custom Vanilla CSS -->
+    <link rel="stylesheet" href="{% static 'css/styles.css' %}">
+    
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <!-- Navbar -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="{% url 'dashboard' %}" class="logo">
+                <i class="fa-solid fa-heart-pulse logo-icon"></i>
+                <span>CareSync</span>
+            </a>
+            
+            <div class="nav-links">
+                {% if user.is_authenticated %}
+                    <span class="user-badge">
+                        <i class="fa-solid fa-user-circle"></i>
+                        <span>{{ user.username }} ({{ user.profile.get_role_display }})</span>
+                    </span>
+                    <a href="{% url 'dashboard' %}" class="nav-item">
+                        <i class="fa-solid fa-chart-line"></i> Dashboard
+                    </a>
+                    <a href="{% url 'logout' %}" class="nav-item btn-logout">
+                        <i class="fa-solid fa-right-from-bracket"></i> Logout
+                    </a>
+                {% else %}
+                    <a href="{% url 'login' %}" class="nav-item btn-login">
+                        <i class="fa-solid fa-right-to-bracket"></i> Login / Register
+                    </a>
+                {% endif %}
+            </div>
+        </div>
+    </nav>
+
+    <!-- Alert Messages -->
+    {% if messages %}
+        <div class="message-container">
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }}">
+                    <div class="alert-content">
+                        {% if message.tags == 'success' %}
+                            <i class="fa-solid fa-circle-check alert-icon"></i>
+                        {% elif message.tags == 'warning' %}
+                            <i class="fa-solid fa-circle-exclamation alert-icon"></i>
+                        {% elif message.tags == 'error' %}
+                            <i class="fa-solid fa-circle-xmark alert-icon"></i>
+                        {% else %}
+                            <i class="fa-solid fa-circle-info alert-icon"></i>
+                        {% endif %}
+                        <span class="alert-text">{{ message }}</span>
+                    </div>
+                    <button class="alert-close" onclick="this.parentElement.remove()">&times;</button>
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+
+    <!-- Main Content Area -->
+    <main class="main-content">
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="footer-content">
+            <p>&copy; 2026 CareSync. Built with Python & Django. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <!-- Custom JS -->
+    <script src="{% static 'js/main.js' %}"></script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>
