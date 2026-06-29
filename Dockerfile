@@ -13,6 +13,9 @@ RUN pip install django django-bootstrap4
 RUN python manage.py migrate
 RUN python seed_db.py
 
+ENV DJANGO_DEBUG=False
+ENV PYTHONUNBUFFERED=1
+
 EXPOSE 8000
 
 ENTRYPOINT ["python", "manage.py", "runserver", "0.0.0.0:8000"]
