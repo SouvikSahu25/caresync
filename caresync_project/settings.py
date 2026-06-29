@@ -10,22 +10,18 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/6.0/ref/settings/
 """
 
+import os
 from pathlib import Path
 
-# Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+ALLOWED_HOSTS = ['*']
 
-# Quick-start development settings - unsuitable for production
-# See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
-
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-g+riw8s^(6&(ngs##fw&5t2g*ek33#c1fcyznny3&imgan=)uj'
-
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
-
-ALLOWED_HOSTS = []
+CSRF_TRUSTED_ORIGINS = [
+    'https://dcaresync.up.railway.app',
+]
+if os.environ.get('RAILWAY_STATIC_URL'):
+    CSRF_TRUSTED_ORIGINS.append(f'https://{os.environ["RAILWAY_STATIC_URL"]}')
 
 
 # Application definition

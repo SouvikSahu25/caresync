@@ -1,0 +1,2 @@
+django>=6.0,<7.0
+django-bootstrap4>=24,<27
