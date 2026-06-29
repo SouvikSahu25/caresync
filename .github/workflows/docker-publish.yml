@@ -3,6 +3,7 @@ name: Build & Push to DockerHub
 on:
   push:
     branches: [main]
+    tags: ['v*']
   pull_request:
     branches: [main]
 
@@ -19,18 +20,22 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-      - name: Set image tag
+      - name: Set image tags
         id: meta
         run: |
-          IMAGE_TAG=latest
-          if [[ "${{ github.ref_name }}" != "main" ]]; then
-            IMAGE_TAG=${{ github.sha }}
+          SHORT_SHA=${GITHUB_SHA::7}
+          TAGS="souviksahu/caresync:$SHORT_SHA"
+          if [[ "${{ github.ref_type }}" == "tag" ]]; then
+            VERSION=${GITHUB_REF_NAME#v}
+            TAGS="$TAGS,souviksahu/caresync:$VERSION,souviksahu/caresync:latest"
+          elif [[ "${{ github.ref_name }}" == "main" ]]; then
+            TAGS="$TAGS,souviksahu/caresync:latest"
           fi
-          echo "tag=$IMAGE_TAG" >> $GITHUB_OUTPUT
+          echo "tags=$TAGS" >> $GITHUB_OUTPUT
 
       - name: Build and push
         uses: docker/build-push-action@v5
         with:
           context: .
           push: ${{ github.event_name != 'pull_request' }}
-          tags: souviksahu/caresync:${{ steps.meta.outputs.tag }}
+          tags: ${{ steps.meta.outputs.tags }}
