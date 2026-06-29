@@ -1,0 +1,7 @@
+.git
+
+# misc
+.venv
+
+# db
+*.sqlite3
