@@ -15,6 +15,10 @@ from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'django-insecure-dev-key-change-in-production')
+
+DEBUG = os.environ.get('DJANGO_DEBUG', 'True') == 'True'
+
 ALLOWED_HOSTS = ['*']
 
 CSRF_TRUSTED_ORIGINS = [
